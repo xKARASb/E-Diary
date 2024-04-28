@@ -11,6 +11,7 @@ class Learner:
 
     async def start_polling(self):
         self.session = ClientSession(cookies=self.cookies)
+        await self.__get_periods_dates()
     
     async def stop_polling(self):
         await self.session.close()
@@ -63,5 +64,6 @@ class Learner:
 
         if resp["message"] != "OK":
             return {"error": resp["message"]}
-        return  resp["returnedObject"][0]["periods"]
+        self.periods = resp["returnedObject"][0]["subperiods"]
+
     
