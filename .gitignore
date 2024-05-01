@@ -1,0 +1,7 @@
+/tests
+/venv
+.env
+.vscode/
+db.sqlite
+/data
+*\__pycache__\
