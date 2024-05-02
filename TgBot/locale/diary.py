@@ -1,0 +1,5 @@
+welcome_text = lambda name: f"Здравствуй {name}!\nЧто хочешь узнать?"
+marks_main_text = "Какие оценки хочешь посмотреть?"
+marks_week_text = "Оценки за текущую неделю:\n"
+marks_period_text = "Выбери нужное ⬇️"
+no_week_marks = "За эту неделю ты не получил оценок 😞"

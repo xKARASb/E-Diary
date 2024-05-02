@@ -10,7 +10,7 @@ class LessonTime:
         self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
         self.day_of_week = shifts_mode["dayWeek"]
         self.num = shifts_mode["num"]
-        self.start_time = dt.datetime.strptime(shifts_mode["timeStart"], "%H:%M:%S")
+        self.start_time = dt.datetime.strptime(shifts_mode["timeBegin"], "%H:%M:%S")
         self.end_time = dt.datetime.strptime(shifts_mode["timeEnd"], "%H:%M:%S")
     
     def __str__(self):

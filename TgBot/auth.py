@@ -17,7 +17,7 @@ auth_router = Router(name='auth')
 
 @auth_router.message(Command('start'))
 async def start(message: Message):
-    user = await Account.get_account(message.from_user.id)
+    user = await Account(message.from_user.id).get_account()
     if user:
         await message.answer(welcome_text(user.learner.first_name), reply_markup=MainMenuKeyboard())
     else:
@@ -25,7 +25,7 @@ async def start(message: Message):
 
 @auth_router.callback_query(AuthCallback.filter(F.action == "start"))
 async def auth_start(query: CallbackQuery):
-    user = await Account.get_account(query.from_user.id)
+    user = await Account(query.from_user.id).get_account()
     if user:
         await query.message.edit_text(already_login_text, parse_mode="Markdownv2")
         return
@@ -39,7 +39,7 @@ async def auth_cancel(query: CallbackQuery):
 
 @auth_router.callback_query(AuthCallback.filter(F.action == "allow"))
 async def auth_cancel(query: CallbackQuery, state: FSMContext):
-    user = await Account.get_account(query.from_user.id)
+    user = await Account(query.from_user.id).get_account()
     if user:
         await query.message.answer(already_login_text, parse_mode="Markdownv2")
         await query.message.delete()

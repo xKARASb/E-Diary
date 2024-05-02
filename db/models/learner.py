@@ -7,7 +7,6 @@ from db import Base
 class Learner(Base):
     __tablename__ = "learner"
 
-
     id = Column(Integer, primary_key=True, autoincrement=False)
     person_id = Column(Integer, unique=True)
     account_id = mapped_column(ForeignKey("account.id", ondelete='CASCADE', onupdate="CASCADE"))

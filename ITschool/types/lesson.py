@@ -1,5 +1,7 @@
 from datetime import date
-from . import *
+from .worker import Worker
+from .lesson_time import LessonTime
+from .score import Score
 
 class Lesson:
     def __init__(
@@ -10,7 +12,8 @@ class Lesson:
             teacher: Worker,
             subject_short_name: str,
             room: int,
-            lesson_shift: LessonTime 
+            lesson_shift: LessonTime, 
+            score: Score
     ):
         self.date = date
         self.descrption = description
@@ -19,7 +22,7 @@ class Lesson:
         self.subject_short_name = subject_short_name
         self.room = room
         self.lesson_shift = lesson_shift
-        self.score = Score
+        self.score = score
 
     async def get_date(self) -> str:
         return self.date.strftime('%Y-%m')
