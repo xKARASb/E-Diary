@@ -27,18 +27,15 @@ async def start(message: Message):
 async def auth_start(query: CallbackQuery):
     user = await Account.get_account(query.from_user.id)
     if user:
-        await query.message.answer(already_login_text, parse_mode="Markdownv2")
-        await query.message.delete()
+        await query.message.edit_text(already_login_text, parse_mode="Markdownv2")
         return
     
-    await query.message.answer(allow_personal_data_text, reply_markup=PersonalDataKeyboard())
-    await query.message.delete()
+    await query.message.edit_text(allow_personal_data_text, reply_markup=PersonalDataKeyboard())
             
 @auth_router.callback_query(AuthCallback.filter(F.action == "cancel"))
 async def auth_cancel(query: CallbackQuery):
-    await query.message.answer(cancel_text, reply_markup=AuthKeyboard())
+    await query.message.edit_text(cancel_text, reply_markup=AuthKeyboard())
     await query.answer()
-    await query.message.delete()
 
 @auth_router.callback_query(AuthCallback.filter(F.action == "allow"))
 async def auth_cancel(query: CallbackQuery, state: FSMContext):
