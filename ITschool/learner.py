@@ -7,6 +7,8 @@ import datetime as dt
 import threading as th
 
 import logging
+import json
+import asyncio
 
 learners = {}
 
@@ -22,6 +24,8 @@ class Learner:
         self.session = ClientSession(cookies=self.cookies)
         
         self.ping_running = True
+        self.loop = asyncio.get_running_loop()
+        print(self.loop)
         task = th.Thread(target=self.ping)
         task.start()
         await self.__get_periods_dates()
@@ -34,15 +38,18 @@ class Learner:
             
             if resp.status_code != 200:
                 self.server_allowed = False
+                self.loop.stop()
                 return {"error": "Sessionid expired"}
             sleep(300)
 
     async def stop_polling(self):
+        logging.info("Stop pinging...")
         self.ping_running = False
         await self.session.close()
+        logging.info("Stoped pinging")
                 
     async def update_cookie(self, jsessionid: str):
-        self.cookies["JSESSIONID"] = jsessionid
+        self.cookies["JSESSIONID"] = jsessionid 
         await self.session.close()
         self.session = ClientSession(cookies=self.cookies)
     
@@ -87,11 +94,82 @@ class Learner:
         return resp["returnedObject"]
     
     async def __get_periods_dates(self):
-        resp = await (await self.session.get("https://school.edu-penza.ru/android/childs")).json()
+        # resp = await (await self.session.get("https://school.edu-penza.ru/android/childs")).json()
 
-        if resp["message"] != "OK":
-            return {"error": resp["message"]}
-        self.periods = resp["returnedObject"][0]["subperiods"]
+        # if resp["message"] != "OK":
+        #     return {"error": resp["message"]}
+        # self.periods = resp["returnedObject"][0]["subperiods"]
+        dates = """[
+        {
+            "guid": "067b299f-7405-41e7-9875-52fc2ad18e1e",
+            "deleted": false,
+            "id": 23892,
+            "dateFrom": "2023-09-01",
+            "dateTo": "2023-10-27",
+            "dateExFrom": null,
+            "dateExTo": null,
+            "studyPeriod": {
+                "guid": null,
+                "deleted": false,
+                "id": 1,
+                "code": 1,
+                "name": "I четверть",
+                "group": 1
+            }
+        },
+        {
+            "guid": "b48fab2f-6704-4bc2-bfe7-05a3f3eafe4f",
+            "deleted": false,
+            "id": 23893,
+            "dateFrom": "2023-11-07",
+            "dateTo": "2023-12-22",
+            "dateExFrom": null,
+            "dateExTo": null,
+            "studyPeriod": {
+                "guid": null,
+                "deleted": false,
+                "id": 2,
+                "code": 2,
+                "name": "II четверть",
+                "group": 1
+            }
+        },
+        {
+            "guid": "5b24f860-7655-4467-8c9d-b32afef1199a",
+            "deleted": false,
+            "id": 23894,
+            "dateFrom": "2024-01-09",
+            "dateTo": "2024-03-22",
+            "dateExFrom": null,
+            "dateExTo": null,
+            "studyPeriod": {
+                "guid": null,
+                "deleted": false,
+                "id": 3,
+                "code": 3,
+                "name": "III четверть",
+                "group": 1
+            }
+        },
+        {
+            "guid": "430552a8-7098-40ac-97ee-43be875be817",
+            "deleted": false,
+            "id": 23895,
+            "dateFrom": "2024-04-01",
+            "dateTo": "2024-05-24",
+            "dateExFrom": null,
+            "dateExTo": null,
+            "studyPeriod": {
+                "guid": null,
+                "deleted": false,
+                "id": 4,
+                "code": 4,
+                "name": "IV четверть",
+                "group": 1
+            }
+        }
+    ]"""
+        self.periods = json.loads(dates)
 
     def __new__(cls, *args, **kwargs):
         print(args)

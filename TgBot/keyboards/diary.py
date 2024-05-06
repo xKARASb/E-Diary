@@ -16,7 +16,7 @@ def MainMenuKeyboard():
 
 def NavigationKeyboard(buttons: list, back_ref: str, params = None, to_main=True):
     button = [
-            InlineKeyboardButton(text="Назад 🔙", callback_data=NavigationCallback(menu=back_ref, params=params).pack()),
+            InlineKeyboardButton(text="Назад ⬅️", callback_data=NavigationCallback(menu=back_ref, params=params).pack()),
             ]
     if to_main:
         button.append(InlineKeyboardButton(text="Главное меню 📍", callback_data=NavigationCallback(menu="main").pack()))
@@ -27,30 +27,49 @@ def NavigationKeyboard(buttons: list, back_ref: str, params = None, to_main=True
 def MarksKeyboard():
     buttons = [
         [
-            InlineKeyboardButton(text="За неделю", callback_data=NavigationCallback(menu="marks.week").pack()),
-            InlineKeyboardButton(text="Период", callback_data=NavigationCallback(menu="marks.period").pack())
+            InlineKeyboardButton(text="Средние 📊", callback_data=NavigationCallback(menu="marks.avg").pack()),
+            InlineKeyboardButton(text="Все оценки ⚡", callback_data=NavigationCallback(menu="marks.period").pack())
         ],
         [
-            InlineKeyboardButton(text="Итоговые", callback_data=NavigationCallback(menu="marks.final").pack()),
+            InlineKeyboardButton(text="Итоговые 💌", callback_data=NavigationCallback(menu="marks.final").pack()),
         ]
     ]
     return NavigationKeyboard(buttons, "main", to_main=False)
 
-def MarksPeriodChoice():
+def MarksPeriodChoice(menu = "marks.default"):
     buttons = [
         [
-            InlineKeyboardButton(text="I", callback_data=NavigationCallback(menu="marks.default", params="quoter.first").pack()),
-            InlineKeyboardButton(text="II", callback_data=NavigationCallback(menu="marks.default", params="quoter.second").pack()),
-            InlineKeyboardButton(text="III", callback_data=NavigationCallback(menu="marks.default", params="quoter.third").pack()),
-            InlineKeyboardButton(text="IV", callback_data=NavigationCallback(menu="marks.default", params="quoter.fourth").pack())
+            InlineKeyboardButton(text="Неделя", callback_data=NavigationCallback(menu="marks.week").pack()),
+            
         ],
         [
-            InlineKeyboardButton(text="I половина", callback_data=NavigationCallback(menu="marks.default", params="half.first").pack()),
-            InlineKeyboardButton(text="II половина", callback_data=NavigationCallback(menu="marks.default", params="half.second").pack()),
+            InlineKeyboardButton(text="I", callback_data=NavigationCallback(menu=menu, params="quoter.first").pack()),
+            InlineKeyboardButton(text="II", callback_data=NavigationCallback(menu=menu, params="quoter.second").pack()),
+            InlineKeyboardButton(text="III", callback_data=NavigationCallback(menu=menu, params="quoter.third").pack()),
+            InlineKeyboardButton(text="IV", callback_data=NavigationCallback(menu=menu, params="quoter.fourth").pack())
         ],
         [
-            InlineKeyboardButton(text="Выбрать период", callback_data=NavigationCallback(menu="marks.custom").pack()),
+            InlineKeyboardButton(text="I полугодие", callback_data=NavigationCallback(menu=menu, params="half.first").pack()),
+            InlineKeyboardButton(text="II полугодие", callback_data=NavigationCallback(menu=menu, params="half.second").pack()),
+        ],
+        [
+            InlineKeyboardButton(text="Выбрать период 🗓️", callback_data=NavigationCallback(menu="marks.custom").pack()),
         ]
+    ]
+    return NavigationKeyboard(buttons, "marks")
+
+def MarksAvgChoice(menu = "marks.avg.preiod"):
+    buttons = [
+        [
+            InlineKeyboardButton(text="I", callback_data=NavigationCallback(menu=menu, params="quoter.first").pack()),
+            InlineKeyboardButton(text="II", callback_data=NavigationCallback(menu=menu, params="quoter.second").pack()),
+            InlineKeyboardButton(text="III", callback_data=NavigationCallback(menu=menu, params="quoter.third").pack()),
+            InlineKeyboardButton(text="IV", callback_data=NavigationCallback(menu=menu, params="quoter.fourth").pack())
+        ],
+        [
+            InlineKeyboardButton(text="I полугодие", callback_data=NavigationCallback(menu=menu, params="half.first").pack()),
+            InlineKeyboardButton(text="II полугодие", callback_data=NavigationCallback(menu=menu, params="half.second").pack()),
+        ],
     ]
     return NavigationKeyboard(buttons, "marks")
 
@@ -75,7 +94,7 @@ def MarksDefaulChoiceLessons(lessons):
 def MarksPeriodDateButton(params):
     buttons = [
         [
-            InlineKeyboardButton(text="Отсортировать по дате", callback_data=NavigationCallback(menu="marks.default.lesson.date").pack()),
+            InlineKeyboardButton(text="Отсортировать по дате 📅", callback_data=NavigationCallback(menu="marks.default.lesson.date").pack()),
         ]
     ]
     return NavigationKeyboard(buttons, back_ref="marks.default", params=params)

@@ -18,3 +18,7 @@ dp.include_router(diary_router)
 
 async def start_bot():
     await dp.start_polling(bot, handle_signals=True)
+
+async def stop_bot():
+    await dp.stop_polling()
+            

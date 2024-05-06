@@ -74,8 +74,7 @@ async def marks_week(query: CallbackQuery):
         marks_text = no_week_marks
     marks_text = marks_text.replace("#goodReason", "").replace("#miss", "")
     await query.message.edit_text(text=marks_week_text + marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref="marks"))
-    # await query.message.delete()
-
+    
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.period"))
 async def marks_week(query: CallbackQuery):
     await query.message.edit_text(marks_period_text, reply_markup=MarksPeriodChoice())  
@@ -145,7 +144,7 @@ async def watch_marks(query: CallbackQuery, state: FSMContext):
     last_date = None
     text = f"*Твои оценки по {validate_text(subject)}*:\n"
     for i in lessons[subject]:
-        text += f"\n*За {validate_text(i.date.strftime('%d.%m.%Y'))}:*\n" if last_date!= i.date else ""
+        text += f"\n*За {validate_text(i.date.strftime('%d.%m.%Y'))}:*\n" if last_date != i.date else ""
         text += ">" if last_date != i.date else " "
         text += f"{validate_text(i.score.mark)}"
         last_date = i.date
@@ -157,5 +156,59 @@ async def marks_custom(query: CallbackQuery):
     await query.answer("В разработке... ⏳")
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.final"))
-async def marks_week(query: CallbackQuery):
+async def marks_final(query: CallbackQuery):
     await query.answer("В разработке... ⏳")
+
+@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.avg"))
+async def marks_avg(query: CallbackQuery):
+    await query.message.edit_text(marks_avg_text, reply_markup=MarksAvgChoice())
+
+@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.avg.preiod"))
+async def marks_avg_period(query: CallbackQuery):
+    period = NavigationCallback.unpack(query.data).params
+    period_text = None
+    match period:
+        case "quoter.first":
+            date_start = learner_client.periods[0]["dateFrom"]
+            date_end = learner_client.periods[0]["dateTo"]
+            period_text = "I четверть"
+        case "quoter.second":
+            date_start = learner_client.periods[1]["dateFrom"]
+            date_end = learner_client.periods[1]["dateTo"]
+            period_text = "II четверть"
+        case "quoter.third":
+            date_start = learner_client.periods[2]["dateFrom"]
+            date_end = learner_client.periods[2]["dateTo"]
+            period_text = "III четверть"
+        case "quoter.fourth":
+            date_start = learner_client.periods[3]["dateFrom"]
+            date_end = learner_client.periods[3]["dateTo"]
+            period_text = "IV четверть"
+        case "half.first":
+            date_start = learner_client.periods[0]["dateFrom"]
+            date_end = learner_client.periods[1]["dateTo"]
+            period_text = "I полугодие"
+        case "half.second":
+            date_start = learner_client.periods[2]["dateFrom"]
+            date_end = learner_client.periods[3]["dateTo"]
+            period_text = "II полугодие"
+
+    date_start, date_end = dt.datetime.strptime(date_start, "%Y-%m-%d"), dt.datetime.strptime(date_end, "%Y-%m-%d")
+
+    marks = await learner_client.get_period(
+        (await Account(query.from_user.id).get_account()).learner.person_id,
+        date_start,
+        date_end
+        )
+    marks_text = f"Средние за *{period_text}*:\n"
+    for lesson in marks:
+        if len(lesson) == 3:
+            continue
+        if len(lesson[0]) > 23:
+            lesson[0] = lesson[0][:23] + "..."
+        marks_text += f"*•* `{validate_text(lesson[0])}:{' ' * (35 - 6 - len(lesson[0]))}`*{lesson[-2].split('#')[0]}*\n"
+        # marks_text += ">" + validate_text(" ".join(lesson[1:-2])) + "\r\n"
+    if not marks_text:
+        marks_text = no_week_marks
+    await query.message.edit_text(text=marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref="marks.avg"))
+    

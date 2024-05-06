@@ -1,5 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from TgBot.callbacks import AuthCallback
+from TgBot.callbacks import AuthCallback, NavigationCallback
 
 
 def AuthKeyboard():
@@ -25,3 +25,8 @@ def ConfirmUserKeyboard():
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def ToMainMenuKeyboard():
+    buttons = [
+        [InlineKeyboardButton(text="Главное меню 📍", callback_data=NavigationCallback(menu="main").pack())]
+    ]
