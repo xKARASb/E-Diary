@@ -4,11 +4,11 @@ class Score:
         if lesson_scores:
             if lesson_scores["miss"]:
                 self.mark = "Н"
-            if lesson_scores["scoreStr"] and lesson_scores["additionalScoreStr"]:
+            elif lesson_scores["scoreStr"] and lesson_scores["additionalScoreStr"]:
                 self.mark = f"{lesson_scores['scoreStr']} {lesson_scores['additionalScoreStr']}"
-            if lesson_scores["scoreStr"]:
+            elif lesson_scores["scoreStr"]:
                 self.mark = lesson_scores["scoreStr"]
-            if lesson_scores["additionalScoreStr"]:
+            elif lesson_scores["additionalScoreStr"]:
                 self.mark = lesson_scores["additionalScoreStr"]
         
     def __str__(self):
