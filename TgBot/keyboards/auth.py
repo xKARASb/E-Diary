@@ -30,3 +30,4 @@ def ToMainMenuKeyboard():
     buttons = [
         [InlineKeyboardButton(text="Главное меню 📍", callback_data=NavigationCallback(menu="main").pack())]
     ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)

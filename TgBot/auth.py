@@ -61,7 +61,7 @@ async def auth_confirm(query: CallbackQuery, state: FSMContext):
     await db_session.commit()
     await db_session.close()
 
-    await query.message.edit_text("Ты успешно авторизовался\!", parse_mode='Markdownv2', reply_markup=None)
+    await query.message.edit_text(success_login_text, parse_mode='Markdownv2', reply_markup=ToMainMenuKeyboard())
     await state.clear()
 
 @auth_router.callback_query(AuthCallback.filter(F.action == "deny"))
