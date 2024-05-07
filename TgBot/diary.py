@@ -1,7 +1,10 @@
 from aiogram import Router, F
 from aiogram.filters import Command
+from aiogram.filters.callback_data import CallbackData
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
+
+from aiogram_calendar import SimpleCalendarCallback, SimpleCalendar, get_user_locale
 
 import datetime as dt
 import logging
@@ -18,6 +21,8 @@ from ITschool.types import Lesson
 from ITschool import learner_client
 
 diary_router = Router()
+
+users_calendar = {}
 
 client_cache = {}
 
@@ -38,16 +43,14 @@ async def main(query: CallbackQuery, state: FSMContext):
     await state.clear()
     if client_cache.get(query.from_user.id):
         client_cache.pop(query.from_user.id)
-    # await query.message.answer(welcome_text(user.learner.first_name), reply_markup=MainMenuKeyboard())
-    # await query.message.delete()
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "home_task"))
 async def home_task(query: CallbackQuery):
-    await query.answer("В разработке... ⏳")
+    await query.answer(in_progres_text)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "timetable"))
 async def timetable(query: CallbackQuery):
-    await query.answer("В разработке... ⏳")
+    await query.answer(in_progres_text)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks"))
 async def marks(query: CallbackQuery):
@@ -79,7 +82,6 @@ async def marks_week(query: CallbackQuery):
 async def marks_week(query: CallbackQuery):
     await query.message.edit_text(marks_period_text, reply_markup=MarksPeriodChoice())  
 
-
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.default"))
 async def marks_default(query: CallbackQuery, state: FSMContext):
     period = NavigationCallback.unpack(query.data).params
@@ -109,6 +111,9 @@ async def marks_default(query: CallbackQuery, state: FSMContext):
             date_start = learner_client.periods[2]["dateFrom"]
             date_end = learner_client.periods[3]["dateTo"]
             period_text = "II полугодие"
+        case _:
+            date_start, date_end = period.split(".")
+            period_text = f"с {date_start} по {date_end}" 
 
     date_start, date_end = dt.datetime.strptime(date_start, "%Y-%m-%d"), dt.datetime.strptime(date_end, "%Y-%m-%d")
     await state.set_data({"period": period})
@@ -117,26 +122,32 @@ async def marks_default(query: CallbackQuery, state: FSMContext):
     if user_cache.get("period") != period:
         await query.answer("Получаем оценки... ⏳")
         await query.message.edit_text("Получаем оценки... ⏳")
-        lessons = await learner_client.get_week((await Account(query.from_user.id).get_account()).learner.person_id, date_start, date_end)
+        lessons = await learner_client.get_week(
+            (await Account(query.from_user.id).get_account()).learner.person_id,
+            date_start,
+            date_end
+            )
         client_cache[query.from_user.id] = {"period": period, "lessons": lessons}
     else:
         lessons = user_cache["lessons"]
-
-    await query.message.edit_text(f"{period_text}\n Выбери интересующий урок", reply_markup=MarksDefaulChoiceLessons(tuple(lessons.keys())))
     
-@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.default.lesson"))
+    await query.message.edit_text(marks_default_text(period_text), reply_markup=MarksDefaulChoiceLessons(tuple(lessons.keys())))
+    
+@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.period.lesson"))
 async def watch_marks(query: CallbackQuery, state: FSMContext):
-    subject = NavigationCallback.unpack(query.data).params
+    cntx = await state.get_data()
+    subject = cntx.get("subject", NavigationCallback.unpack(query.data).params)
     lessons = client_cache[query.from_user.id]["lessons"]
     
-    text = f"*Твои оценки по {validate_text(subject)}*:\n"
+    text = f"Твои оценки по *{validate_text(subject)}*:\n"
 
     text += ">" + " ".join([validate_text(i.score.mark) for i in lessons.get(subject, [])])
-    print(await state.get_data())
-    await query.message.edit_text(text, reply_markup=MarksPeriodDateButton(params=(await state.get_data())["period"]), parse_mode="Markdownv2") #NavigationKeyboard([], back_ref="marks.default", params=(await state.get_data())["period"])
+    await state.update_data({"back_ref": "marks.period.lesson"})
+    logging.info((await state.get_data())["period"])
+    await query.message.edit_text(text, reply_markup=MarksPeriodSortDateButton(back_ref="marks.default" , params=(await state.get_data())["period"]), parse_mode="Markdownv2") #NavigationKeyboard([], back_ref="marks.default", params=(await state.get_data())["period"])
     await state.update_data({"subject": subject})
 
-@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.default.lesson.date"))
+@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.period.lesson.date"))
 async def watch_marks(query: CallbackQuery, state: FSMContext):
     subject = (await state.get_data())["subject"]
     lessons = client_cache[query.from_user.id]["lessons"]
@@ -149,22 +160,101 @@ async def watch_marks(query: CallbackQuery, state: FSMContext):
         text += f"{validate_text(i.score.mark)}"
         last_date = i.date
 
-    await query.message.edit_text(text=text, reply_markup=NavigationKeyboard([], "marks.default.lesson", subject), parse_mode="Markdownv2")
+    await query.message.edit_text(text=text, reply_markup=NavigationKeyboard([], "marks.period.lesson", subject), parse_mode="Markdownv2")
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.custom"))
-async def marks_custom(query: CallbackQuery):
-    await query.answer("В разработке... ⏳")
+async def marks_custom_start(query: CallbackQuery, state: FSMContext):
+    users_calendar.update({
+        query.from_user.id: SimpleCalendar(show_alerts=True, cancel_btn="Назад ⬅️", today_btn="Сегодня 📍")
+    })
+    calendar = users_calendar[query.from_user.id]
+    calendar.set_dates_range(
+        dt.datetime.strptime(learner_client.periods[0]["dateFrom"], "%Y-%m-%d"),
+        dt.datetime.today()
+        )
+    
+    await state.set_data({"state": "start_date", "back_ref": "marks.period"})
+    await query.message.edit_text("С какого числа хочешь посмотреть оценки?", reply_markup=await calendar.start_calendar())
+
+@diary_router.callback_query(SimpleCalendarCallback.filter(F.act == "CANCEL"))
+async def marks_custom_cancel(query: CallbackQuery, state: FSMContext):
+    if (await state.get_data()).get("back_ref") == "marks.period":
+        await query.message.edit_text(marks_period_text, reply_markup=MarksPeriodChoice())
+        await state.clear()
+    else:
+        await query.message.edit_text("И как ты тут оказался?", reply_markup=NavigationKeyboard(buttons=[], to_main=False))
+        await state.clear()
+
+@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.period.get"))
+async def marks_custom_generate(query: CallbackQuery, state: FSMContext):
+    date_start = dt.datetime.strptime((await state.get_data())["date_start"], "%Y-%m-%d")
+    date_end = dt.datetime.strptime((await state.get_data())["date_end"], "%Y-%m-%d")
+    period_text = f"с *{validate_text(date_start.strftime('%d.%m.%Y'))}* по *{validate_text(date_end.strftime('%d.%m.%Y'))}*"
+    period = f"{date_start.strftime('%Y-%m-%d')}.{date_end.strftime('%Y-%m-%d')}"
+
+    await state.set_data({"period": period})
+    user_cache = client_cache.get(query.from_user.id, {})
+
+    if user_cache.get("period") != period:
+        await query.answer("Получаем оценки... ⏳")
+        await query.message.edit_text("Получаем оценки... ⏳")
+        lessons = await learner_client.get_week(
+            (await Account(query.from_user.id).get_account()).learner.person_id,
+            date_start,
+            date_end
+            )
+        client_cache[query.from_user.id] = {"period": period, "lessons": lessons}
+    else:
+        lessons = user_cache["lessons"]
+    
+    await query.message.edit_text(marks_default_text(period_text), reply_markup=MarksDefaulChoiceLessons(tuple(lessons.keys())), parse_mode="Markdownv2")
+    
+@diary_router.callback_query(SimpleCalendarCallback.filter(F.act == "DAY"))
+async def marks_custom_cancel(query: CallbackQuery, callback_data: CallbackData, state: FSMContext):
+    calendar: SimpleCalendar = users_calendar[query.from_user.id]
+    date = (await calendar.process_day_select(callback_data, query))
+
+    if date[0]:
+        date = date[1]
+    else:
+        logging.info(date)
+        return
+    data = await state.get_data()
+    if not data.get("date_start"):
+        calendar.set_dates_range(
+            date,
+            dt.datetime.today()
+        )
+        await query.message.edit_text(
+            f"Ты выбрал {date.strftime('%d.%m.%Y')}\nПо какое число ты хочешь получить оценки?",
+            reply_markup=await calendar.start_calendar()
+        )
+        await state.update_data({"date_start": date.strftime('%Y-%m-%d')})
+    elif not data.get("date_end"):
+        await state.update_data({"date_end": date.strftime('%Y-%m-%d')})
+        users_calendar.pop(query.from_user.id)
+        if data.get("back_ref") == "marks.period":
+            date_start = dt.datetime.strftime(dt.datetime.strptime((await state.get_data())["date_start"], "%Y-%m-%d"), "%d.%m.%Y")
+            date_end = dt.datetime.strftime(dt.datetime.strptime((await state.get_data())["date_end"], "%Y-%m-%d"), "%d.%m.%Y")
+            await query.message.edit_text(confirm_period_text(validate_text(date_start), validate_text(date_end)), reply_markup=PeriodConfirm("marks.period.get", "marks.period"), parse_mode="Markdownv2")
+
+@diary_router.callback_query(SimpleCalendarCallback.filter())
+async def marks_choice_second_date(query: CallbackQuery, callback_data: CallbackData):
+    calendar = users_calendar[query.from_user.id]
+    
+    await calendar.process_selection(query, callback_data)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.final"))
 async def marks_final(query: CallbackQuery):
-    await query.answer("В разработке... ⏳")
+    await query.answer(in_progres_text)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.avg"))
-async def marks_avg(query: CallbackQuery):
+async def marks_avg(query: CallbackQuery, state: FSMContext):
+    await state.update_data({"back_ref": "marks.avg"})
     await query.message.edit_text(marks_avg_text, reply_markup=MarksAvgChoice())
 
-@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.avg.preiod"))
-async def marks_avg_period(query: CallbackQuery):
+@diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.avg.period"))
+async def marks_avg_period(query: CallbackQuery, state: FSMContext):
     period = NavigationCallback.unpack(query.data).params
     period_text = None
     match period:
@@ -192,7 +282,10 @@ async def marks_avg_period(query: CallbackQuery):
             date_start = learner_client.periods[2]["dateFrom"]
             date_end = learner_client.periods[3]["dateTo"]
             period_text = "II полугодие"
-
+        case _:
+            date_start, date_end = period.split(".")
+            period_text = f"*с *{validate_text(date_start)}* по *{validate_text(date_end)}*\r*"
+    logging.debug(period)
     date_start, date_end = dt.datetime.strptime(date_start, "%Y-%m-%d"), dt.datetime.strptime(date_end, "%Y-%m-%d")
 
     marks = await learner_client.get_period(
@@ -200,15 +293,22 @@ async def marks_avg_period(query: CallbackQuery):
         date_start,
         date_end
         )
-    marks_text = f"Средние за *{period_text}*:\n"
+    marks_text = f"Средние *{period_text}*:\n"
     for lesson in marks:
-        if len(lesson) == 3:
+        if len(lesson) == 3 or lesson[-2].split("#")[0] == "0":
             continue
         if len(lesson[0]) > 23:
-            lesson[0] = lesson[0][:23] + "..."
-        marks_text += f"*•* `{validate_text(lesson[0])}:{' ' * (35 - 6 - len(lesson[0]))}`*{lesson[-2].split('#')[0]}*\n"
-        # marks_text += ">" + validate_text(" ".join(lesson[1:-2])) + "\r\n"
+            if lesson[0].split(".")[0] == "Иностранный язык":
+                lesson[0] = lesson[0].replace("Иностранный язык. ", "")
+            elif lesson[0].split()[0] == "Основы":
+                lesson[0] = lesson[0].replace("Основы безопасности жизнедеятельности", "ОБЖ")
+            else:
+                lesson[0] = lesson[0][:20] + "..."
+
+        marks_text += f"*•* `{validate_text(lesson[0])}:{' ' * (35 - 10 - len(lesson[0]))}`*{lesson[-2].split('#')[0]}*\n"
     if not marks_text:
         marks_text = no_week_marks
-    await query.message.edit_text(text=marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref="marks.avg"))
+    print(await state.get_data())
+    back_ref = (await state.get_data())["back_ref"]
+    await query.message.edit_text(text=marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref))
     

@@ -14,7 +14,7 @@ def MainMenuKeyboard():
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def NavigationKeyboard(buttons: list, back_ref: str, params = None, to_main=True):
+def NavigationKeyboard(buttons: list = [], back_ref: str = "main", params = None, to_main=True):
     button = [
             InlineKeyboardButton(text="Назад ⬅️", callback_data=NavigationCallback(menu=back_ref, params=params).pack()),
             ]
@@ -27,7 +27,7 @@ def NavigationKeyboard(buttons: list, back_ref: str, params = None, to_main=True
 def MarksKeyboard():
     buttons = [
         [
-            InlineKeyboardButton(text="Средние 📊", callback_data=NavigationCallback(menu="marks.avg").pack()),
+            InlineKeyboardButton(text="Средние оценки 📊", callback_data=NavigationCallback(menu="marks.avg").pack()),
             InlineKeyboardButton(text="Все оценки ⚡", callback_data=NavigationCallback(menu="marks.period").pack())
         ],
         [
@@ -58,7 +58,7 @@ def MarksPeriodChoice(menu = "marks.default"):
     ]
     return NavigationKeyboard(buttons, "marks")
 
-def MarksAvgChoice(menu = "marks.avg.preiod"):
+def MarksAvgChoice(menu = "marks.avg.period"):
     buttons = [
         [
             InlineKeyboardButton(text="I", callback_data=NavigationCallback(menu=menu, params="quoter.first").pack()),
@@ -76,8 +76,8 @@ def MarksAvgChoice(menu = "marks.avg.preiod"):
 def MarksDefaulChoiceLessons(lessons):
     buttons = [
         [
-            InlineKeyboardButton(text=lessons[i], callback_data=NavigationCallback(menu="marks.default.lesson", params=f"{lessons[i]}").pack()),
-            InlineKeyboardButton(text=lessons[i+1], callback_data=NavigationCallback(menu="marks.default.lesson", params=f"{lessons[i+1]}").pack()),
+            InlineKeyboardButton(text=lessons[i], callback_data=NavigationCallback(menu="marks.period.lesson", params=f"{lessons[i]}").pack()),
+            InlineKeyboardButton(text=lessons[i+1], callback_data=NavigationCallback(menu="marks.period.lesson", params=f"{lessons[i+1]}").pack()),
         ]
         for i in range(0, len(lessons)-1, 2)
     ]
@@ -85,16 +85,26 @@ def MarksDefaulChoiceLessons(lessons):
     if len(lessons) % 2 != 0:
         buttons.append(
             [
-                InlineKeyboardButton(text=lessons[-1], callback_data=NavigationCallback(menu="marks.default.lesson", params=f"{lessons[-1]}").pack()),
+                InlineKeyboardButton(text=lessons[-1], callback_data=NavigationCallback(menu="marks.period.lesson", params=f"{lessons[-1]}").pack()),
             ]
         )
 
     return NavigationKeyboard(buttons, "marks.period")
 
-def MarksPeriodDateButton(params):
+def MarksPeriodSortDateButton(back_ref, params):
     buttons = [
         [
-            InlineKeyboardButton(text="Отсортировать по дате 📅", callback_data=NavigationCallback(menu="marks.default.lesson.date").pack()),
+            InlineKeyboardButton(text="Показать даты 📅", callback_data=NavigationCallback(menu="marks.period.lesson.date").pack()),
+            InlineKeyboardButton(text="Средние оценки 📊", callback_data=NavigationCallback(menu="marks.avg.period", params=params).pack())
         ]
     ]
-    return NavigationKeyboard(buttons, back_ref="marks.default", params=params)
+    return NavigationKeyboard(buttons, back_ref=back_ref, params=params)
+
+def PeriodConfirm(menu, back_ref):
+    buttons = [
+        [
+            InlineKeyboardButton(text="❌", callback_data=NavigationCallback(menu=back_ref).pack()),
+            InlineKeyboardButton(text="✅", callback_data=NavigationCallback(menu=menu).pack()),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
