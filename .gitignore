@@ -3,6 +3,10 @@
 .env
 .vscode/
 db.sqlite
+save_db.sqlite
 /data
 __pycache__/
 startup.bat
+notification.py
+init_db.py
+learners_parser/
