@@ -10,3 +10,4 @@ startup.bat
 notification.py
 init_db.py
 learners_parser/
+old_models/

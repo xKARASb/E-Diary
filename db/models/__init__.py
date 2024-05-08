@@ -1,3 +1,2 @@
-from .group import Group
-from .learner import Learner
 from .tgAccount import Account
+from .person import Person

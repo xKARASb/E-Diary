@@ -1,5 +1,6 @@
 from aiogram import Router, F
 from aiogram.filters import Command
+from aiogram.filters.callback_data import CallbackData
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
@@ -10,7 +11,7 @@ from .keyboards import *
 from .callbacks import AuthCallback
 from .FSM import AuthForm
 
-from db.models import Learner, Account
+from db.models import Account, Person
 from db import session
 
 auth_router = Router(name='auth')
@@ -19,7 +20,7 @@ auth_router = Router(name='auth')
 async def start(message: Message):
     user = await Account(message.from_user.id).get_account()
     if user:
-        await message.answer(welcome_text(user.learner.first_name), reply_markup=MainMenuKeyboard())
+        await message.answer(welcome_text(user.first_name), reply_markup=MainMenuKeyboard())
     else:
         await message.answer(start_text, reply_markup=AuthKeyboard())
 
@@ -29,7 +30,6 @@ async def auth_start(query: CallbackQuery):
     if user:
         await query.message.edit_text(already_login_text, parse_mode="Markdownv2")
         return
-    
     await query.message.edit_text(allow_personal_data_text, reply_markup=PersonalDataKeyboard())
             
 @auth_router.callback_query(AuthCallback.filter(F.action == "cancel"))
@@ -38,7 +38,7 @@ async def auth_cancel(query: CallbackQuery):
     await query.answer()
 
 @auth_router.callback_query(AuthCallback.filter(F.action == "allow"))
-async def auth_cancel(query: CallbackQuery, state: FSMContext):
+async def auth_allow(query: CallbackQuery, state: FSMContext):
     user = await Account(query.from_user.id).get_account()
     if user:
         await query.message.answer(already_login_text, parse_mode="Markdownv2")
@@ -49,21 +49,6 @@ async def auth_cancel(query: CallbackQuery, state: FSMContext):
     await query.message.answer(name_text)
     await query.answer()
 
-@auth_router.callback_query(AuthCallback.filter(F.action == "confirm"))
-async def auth_confirm(query: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    db_session = await session()
-    learner = (await Learner.get_learner_by_name(db_session, data["name"], data["last_name"])).one()
-    account = Account(query.from_user.id)
-    learner.account_id = query.from_user.id
-    db_session.add(account)
-
-    await db_session.commit()
-    await db_session.close()
-
-    await query.message.edit_text(success_login_text, parse_mode='Markdownv2', reply_markup=ToMainMenuKeyboard())
-    await state.clear()
-
 @auth_router.callback_query(AuthCallback.filter(F.action == "deny"))
 async def auth_deny(query: CallbackQuery, state: FSMContext):
     await state.clear()
@@ -72,54 +57,58 @@ async def auth_deny(query: CallbackQuery, state: FSMContext):
 
 @auth_router.message(AuthForm.name)
 async def procces_name(message: Message, state: FSMContext):
-    #TODO Check name to valid, check exsising name
-    await state.update_data(name=message.text.capitalize())
+    await state.update_data(first_name=message.text.capitalize())
     await state.set_state(AuthForm.last_name)
     await message.answer(last_name_text)
 
 @auth_router.message(AuthForm.last_name)
 async def procces_last_name(message: Message, state: FSMContext):
     await state.update_data(last_name=message.text.capitalize())
+    await message.answer(verification_text, reply_markup=VerificationKeyboard())
 
+@auth_router.callback_query(AuthCallback.filter())
+async def procces_verification(query: CallbackQuery, callback_data: AuthCallback, state: FSMContext):
+    text = None
+    match callback_data.action:
+        case "passport":
+            text = verification_passport_text
+        case "snils":
+            text = verification_snils_text
+        case "born":
+            text = verification_born_text
+
+    await query.message.edit_text(text)
+    await state.update_data({"verf_type": callback_data.action})
+    await state.set_state(AuthForm.verification)
+
+@auth_router.message(AuthForm.verification)
+async def procces_last_name(message: Message, state: FSMContext):
+    await state.update_data(verf=message.text.capitalize())
     data = await state.get_data()
-    db_session = await session()
-    learners = (await Learner.get_learner_by_name(db_session, data["name"], data["last_name"])).all()
-    await db_session.close()
-    if len(learners) == 1:
-        if learners[0].account_id:
-            await state.clear()
-            await message.answer(already_registered_text, parse_mode="Markdownv2")
+    first_name = data["first_name"]
+    last_name = data["last_name"]
+    verf = data["verf"]
+    match data["verf_type"]:
+        case "passport":
+            person_id = await Person.get_id_by_passport(first_name, last_name, verf)
+            account_id = await Person.is_authenticated_by_passport(first_name, last_name, verf)
+        case "snils":
+            person_id = await Person.get_id_by_snils(first_name, last_name, verf)
+            account_id = await Person.is_authenticated_by_snils(first_name, last_name, verf)
+        case "born":
+            person_id = await Person.get_id_by_born(first_name, last_name, verf)
+            account_id = await Person.is_authenticated_by_born(first_name, last_name, verf)
+    
+    
+    if person_id:
+        if account_id:
+            if account_id == message.from_user.id:
+                await message.answer(already_login_text, parse_mode="Markdownv2", reply_markup=ToMainMenuKeyboard())
+            else:
+                await message.answer(already_login_text, parse_mode="Markdownv2", reply_markup=AuthKeyboard())
             return
-        await message.answer(
-            person_confirm_user_text(
-                learners[0].first_name,
-                learners[0].last_name,
-                learners[0].birthday.strftime("%d-%m-%Y"),
-                learners[0].group.course,
-                learners[0].group.liter
-                ),
-            reply_markup=ConfirmUserKeyboard()
-            )
-    elif len(learners) == 0:
-        await message.answer(person_error_text, parse_mode='Markdownv2', reply_markup=AuthKeyboard())
-        await state.clear()
-
-@auth_router.message(AuthForm.course)
-async def procces_course(message: Message, state: FSMContext):
-    if message.text.isdigit() and int(message.text) > 0 and int(message.text) < 12:
-        await state.update_data(course=message.text)
-        await state.set_state(AuthForm.letter)
-        await message.answer(letter_text)
+        await Account(message.from_user.id, first_name=first_name).create()
+        await Person.set_account_id(person_id, message.from_user.id)
+        await message.answer(success_login_text, parse_mode="Markdownv2", reply_markup=ToMainMenuKeyboard())
     else:
-        await message.answer(course_error_text)
-
-@auth_router.message(AuthForm.letter)
-async def procces_course(message: Message, state: FSMContext):
-    if message.text.lower() in ascii_letters:
-        await state.update_data(course=message.text)
-        await state.set_state(AuthForm.letter)
-        # await message.answer(letter_text)
-    else:
-        await message.answer(letter_error_text)
-
-
+        await message.answer(person_error_text, parse_mode="Markdownv2", reply_markup=AuthKeyboard())

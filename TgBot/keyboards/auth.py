@@ -26,6 +26,16 @@ def ConfirmUserKeyboard():
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+def VerificationKeyboard():
+    buttons = [
+        [
+            InlineKeyboardButton(text="Паспорт", callback_data=AuthCallback(action="passport").pack()),
+            InlineKeyboardButton(text="СНИЛС", callback_data=AuthCallback(action="snils").pack()),
+            InlineKeyboardButton(text="Свид. о рождении", callback_data=AuthCallback(action="born").pack()),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 def ToMainMenuKeyboard():
     buttons = [
         [InlineKeyboardButton(text="Главное меню 📍", callback_data=NavigationCallback(menu="main").pack())]

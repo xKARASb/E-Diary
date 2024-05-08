@@ -39,7 +39,7 @@ def validate_text(text, exct = []):
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "main"))
 async def main(query: CallbackQuery, state: FSMContext):
     user = await Account(query.from_user.id).get_account()
-    await query.message.edit_text(welcome_text(user.learner.first_name), reply_markup=MainMenuKeyboard())
+    await query.message.edit_text(welcome_text(user.first_name), reply_markup=MainMenuKeyboard())
     await state.clear()
     if client_cache.get(query.from_user.id):
         client_cache.pop(query.from_user.id)
@@ -63,7 +63,7 @@ async def marks_week(query: CallbackQuery):
     date_start = today - dt.timedelta(days=day_of_week) - dt.timedelta(days=14)
     date_end = date_start + dt.timedelta(days=6) - dt.timedelta(days=14)
     marks = await learner_client.get_period(
-        (await Account(query.from_user.id).get_account()).learner.person_id,
+        (await Account(query.from_user.id).get_account()).person.id,
         date_start,
         date_end
         )
@@ -123,7 +123,7 @@ async def marks_default(query: CallbackQuery, state: FSMContext):
         await query.answer("Получаем оценки... ⏳")
         await query.message.edit_text("Получаем оценки... ⏳")
         lessons = await learner_client.get_week(
-            (await Account(query.from_user.id).get_account()).learner.person_id,
+            (await Account(query.from_user.id).get_account()).person.id,
             date_start,
             date_end
             )
@@ -199,7 +199,7 @@ async def marks_custom_generate(query: CallbackQuery, state: FSMContext):
         await query.answer("Получаем оценки... ⏳")
         await query.message.edit_text("Получаем оценки... ⏳")
         lessons = await learner_client.get_week(
-            (await Account(query.from_user.id).get_account()).learner.person_id,
+            (await Account(query.from_user.id).get_account()).person.id,
             date_start,
             date_end
             )
@@ -241,7 +241,6 @@ async def marks_custom_cancel(query: CallbackQuery, callback_data: CallbackData,
 @diary_router.callback_query(SimpleCalendarCallback.filter())
 async def marks_choice_second_date(query: CallbackQuery, callback_data: CallbackData):
     calendar = users_calendar[query.from_user.id]
-    
     await calendar.process_selection(query, callback_data)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.final"))
@@ -285,11 +284,10 @@ async def marks_avg_period(query: CallbackQuery, state: FSMContext):
         case _:
             date_start, date_end = period.split(".")
             period_text = f"*с *{validate_text(date_start)}* по *{validate_text(date_end)}*\r*"
-    logging.debug(period)
     date_start, date_end = dt.datetime.strptime(date_start, "%Y-%m-%d"), dt.datetime.strptime(date_end, "%Y-%m-%d")
 
     marks = await learner_client.get_period(
-        (await Account(query.from_user.id).get_account()).learner.person_id,
+        (await Account(query.from_user.id).get_account()).person.id,
         date_start,
         date_end
         )
@@ -311,4 +309,3 @@ async def marks_avg_period(query: CallbackQuery, state: FSMContext):
     print(await state.get_data())
     back_ref = (await state.get_data())["back_ref"]
     await query.message.edit_text(text=marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref))
-    
