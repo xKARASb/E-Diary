@@ -105,7 +105,7 @@ async def timetable_day(query: CallbackQuery, callback_data: CallbackData, state
     for i in lessons:
         text += f"\n{i.lesson_shift.num}\. *{validate_text(i.subject_short_name)}*"
         text += f" _{i.lesson_shift.start_time.strftime('%H:%M')} \- {i.lesson_shift.end_time.strftime('%H:%M')}_"
-        i.home_task = i.home_task if i.home_task else "ДЗ не указано"
+        i.home_task = i.home_task.capitalize() if i.home_task else "ДЗ не указано"
         for task in i.home_task.split("\n"):
             text += f"\n>{validate_text(task)}"
 
