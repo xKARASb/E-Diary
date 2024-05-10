@@ -4,12 +4,9 @@ from TgBot.callbacks import NavigationCallback
 def MainMenuKeyboard():
     buttons = [
         [
-            InlineKeyboardButton(text="Задания 📝", callback_data=NavigationCallback(menu="home_task").pack()),
+            InlineKeyboardButton(text="Оценки 🫡", callback_data=NavigationCallback(menu="marks").pack()), 
             InlineKeyboardButton(text="Расписание 📃", callback_data=NavigationCallback(menu="timetable").pack())
         ],
-        [
-            InlineKeyboardButton(text="Оценки 🫡", callback_data=NavigationCallback(menu="marks").pack())
-        ]
     ]
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -82,7 +79,7 @@ def MarksDefaulChoiceLessons(lessons):
         for i in range(0, len(lessons)-1, 2)
     ]
 
-    if len(lessons) % 2 != 0:
+    if len(lessons) % 2 == 1:
         buttons.append(
             [
                 InlineKeyboardButton(text=lessons[-1], callback_data=NavigationCallback(menu="marks.period.lesson", params=f"{lessons[-1]}").pack()),

@@ -53,7 +53,7 @@ class Learner:
         await self.session.close()
         self.session = ClientSession(cookies=self.cookies)
     
-    async def get_week(self, person_id: int, date_start=dt.date.today(), date_end=dt.date.today()) -> dict[str, list[Lesson]]:
+    async def get_week(self, person_id: int, date_start=dt.date.today(), date_end=dt.date.today(), sort_by = "subject") -> dict[str, list[Lesson]]:
         params = {
             "childId": person_id,
             "dateStart": dt.datetime.strftime(date_start, "%Y-%m-%d"),
@@ -64,20 +64,35 @@ class Learner:
 
         if req["message"] != "OK":
             return {"error": req["message"]}
+        
         lessons = {}
-        for lesson in req["returnedObject"]:
-            lsn = Lesson(
-                dt.datetime.strptime(lesson["date"], "%Y-%m-%d"),
-                lesson["description"],
-                lesson["previousHomeTask"],
-                Worker(lesson["worker"]),
-                lesson["subject"]["shortName"],
-                lesson["room"]["number"],
-                LessonTime(lesson["shiftsMode"]),
-                Score(lesson["lessonScores"][0] if lesson["lessonScores"] else {}),
-                )
-            if lsn.score.mark:
-                lessons[lsn.subject_short_name] = lessons.get(lsn.subject_short_name, []) + [lsn]
+        if sort_by == "subject":
+            for lesson in req["returnedObject"]:
+                lsn = Lesson(
+                    dt.datetime.strptime(lesson["date"], "%Y-%m-%d"),
+                    lesson["description"],
+                    lesson["previousHomeTask"],
+                    Worker(lesson["worker"]),
+                    lesson["subject"]["shortName"],
+                    lesson["room"]["number"],
+                    LessonTime(lesson["shiftsMode"]),
+                    Score(lesson["lessonScores"][0] if lesson["lessonScores"] else {}),
+                    )
+                if lsn.score.mark:
+                    lessons[lsn.subject_short_name] = lessons.get(lsn.subject_short_name, []) + [lsn]
+        elif sort_by == "date":
+            for lesson in req["returnedObject"]:
+                lsn = Lesson(
+                    dt.datetime.strptime(lesson["date"], "%Y-%m-%d"),
+                    lesson["description"],
+                    lesson["previousHomeTask"],
+                    Worker(lesson["worker"]),
+                    lesson["subject"]["shortName"],
+                    lesson["room"]["number"],
+                    LessonTime(lesson["shiftsMode"]),
+                    Score(lesson["lessonScores"][0] if lesson["lessonScores"] else {}),
+                    )
+                lessons[lsn.date.strftime("%Y-%m-%d")] = lessons.get(lsn.date.strftime("%Y-%m-%d"), []) + [lsn]
         return lessons
 
     async def get_period(self, person_id: int, date_start: dt.date = dt.date.today() - dt.timedelta(days=31), date_end: dt.date = dt.date.today()):

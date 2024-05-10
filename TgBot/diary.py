@@ -4,16 +4,16 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from aiogram_calendar import SimpleCalendarCallback, SimpleCalendar, get_user_locale
+from aiogram_calendar import SimpleCalendarCallback, SimpleCalendar
 
 import datetime as dt
 import logging
 
 from .locale import *
 from .callbacks import NavigationCallback
+from .utils import *
 from .keyboards.diary import *
 from .FSM.diary import MarksPeriodForm
-
 
 from db.models import Account
 
@@ -22,20 +22,6 @@ from ITschool import learner_client
 
 diary_router = Router()
 
-users_calendar = {}
-
-client_cache = {}
-
-def validate_text(text, exct = []):
-    validate_text = []
-    varity = set(('_', '*', '[', ']', '(', ')', '~', '`', '#', '+', '-', '=', '|', '{', '}', '.', '!', ">", "\\"))
-    varity -= set(exct)
-    for char in text:
-        if char in varity:
-            validate_text.append("\\")
-        validate_text.append(char)
-    return "".join(validate_text)
-
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "main"))
 async def main(query: CallbackQuery, state: FSMContext):
     user = await Account(query.from_user.id).get_account()
@@ -43,14 +29,14 @@ async def main(query: CallbackQuery, state: FSMContext):
     await state.clear()
     if client_cache.get(query.from_user.id):
         client_cache.pop(query.from_user.id)
+    if users_calendar.get(query.from_user.id):
+        users_calendar.pop(query.from_user.id)
+    if user_cache.get(query.from_user.id):
+        user_cache.pop(query.from_user.id)
 
-@diary_router.callback_query(NavigationCallback.filter(F.menu == "home_task"))
-async def home_task(query: CallbackQuery):
-    await query.answer(in_progres_text)
-
-@diary_router.callback_query(NavigationCallback.filter(F.menu == "timetable"))
-async def timetable(query: CallbackQuery):
-    await query.answer(in_progres_text)
+# @diary_router.callback_query(NavigationCallback.filter(F.menu == "timetable"))
+# async def timetable(query: CallbackQuery):
+#     await query.answer(in_progres_text)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks"))
 async def marks(query: CallbackQuery):
@@ -60,8 +46,8 @@ async def marks(query: CallbackQuery):
 async def marks_week(query: CallbackQuery):
     today = dt.date.today()
     day_of_week = today.weekday()
-    date_start = today - dt.timedelta(days=day_of_week) - dt.timedelta(days=14)
-    date_end = date_start + dt.timedelta(days=6) - dt.timedelta(days=14)
+    date_start = today - dt.timedelta(days=day_of_week)
+    date_end = date_start + dt.timedelta(days=6)
     marks = await learner_client.get_period(
         (await Account(query.from_user.id).get_account()).person.id,
         date_start,
@@ -71,12 +57,12 @@ async def marks_week(query: CallbackQuery):
     for lesson in marks:
         if len(lesson) == 3:
             continue
-        marks_text += f"{validate_text(lesson[0])}*:\n"
+        marks_text += f"*{validate_text(lesson[0])}*:\n"
         marks_text += ">" + validate_text(" ".join(lesson[1:-2])) + "\r\n"
     if not marks_text:
         marks_text = no_week_marks
     marks_text = marks_text.replace("#goodReason", "").replace("#miss", "")
-    await query.message.edit_text(text=marks_week_text + marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref="marks"))
+    await query.message.edit_text(text=marks_week_text + marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref="marks.period"))
     
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.period"))
 async def marks_week(query: CallbackQuery):
@@ -165,7 +151,7 @@ async def watch_marks(query: CallbackQuery, state: FSMContext):
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.custom"))
 async def marks_custom_start(query: CallbackQuery, state: FSMContext):
     users_calendar.update({
-        query.from_user.id: SimpleCalendar(show_alerts=True, cancel_btn="Назад ⬅️", today_btn="Сегодня 📍")
+        query.from_user.id: SimpleCalendar(locale="ru_RU.UTF-8", show_alerts=True, cancel_btn="Назад ⬅️", today_btn="Сегодня 📍")
     })
     calendar = users_calendar[query.from_user.id]
     calendar.set_dates_range(
