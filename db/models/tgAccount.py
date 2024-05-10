@@ -32,6 +32,19 @@ class Account(Base):
         await db_session.close()
         return result
     
+    async def get_person_id(self):
+        db_session = await session()
+        result = (await db_session.scalars(select(Account).filter(Account.id == self.id))).one_or_none()
+        await db_session.close()
+        return result.person.id
+    
+    async def get_person_name(self):
+        db_session = await session()
+        result = (await db_session.scalars(select(Account).filter(Account.id == self.id))).one_or_none()
+        await db_session.close()
+        return result.first_name
+                
+
     async def get_all():
         db_session = await session()
         result = (await db_session.scalars(select(Account))).all()
