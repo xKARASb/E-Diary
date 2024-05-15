@@ -9,7 +9,7 @@ class Score:
                 miss = "Н"
             if lesson_scores["scoreStr"]:
                 score = lesson_scores["scoreStr"]
-            elif lesson_scores["additionalScoreStr"]:
+            if lesson_scores["additionalScoreStr"]:
                 additional_score = lesson_scores["additionalScoreStr"]
         self.mark = " ".join([i for i in [miss, score, additional_score] if i])
     def __str__(self):
