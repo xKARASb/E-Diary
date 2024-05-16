@@ -80,7 +80,7 @@ class Learner:
             raise ServerUnaccessible("Server is not available")
         
         req = await req.json()
-        logging.info(await req)
+        logging.info(req)
         if req["message"] != "OK":
             return {"error": req["message"]}
         lessons = {}
