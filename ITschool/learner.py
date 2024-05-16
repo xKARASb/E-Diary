@@ -66,6 +66,7 @@ class Learner:
     
     @server_is_available
     async def get_week(self, person_id: int, date_start=dt.date.today(), date_end=dt.date.today(), sort_by = "subject") -> dict[str, list[Lesson]]:
+        person_id = 254586
         params = {
             "childId": person_id,
             "dateStart": dt.datetime.strftime(date_start, "%Y-%m-%d"),
@@ -73,14 +74,13 @@ class Learner:
         }
         
         req = await self.session.get("https://school.edu-penza.ru/android/scores/week", params=params, allow_redirects=False)
-
-
+        
         if req.status > 300:
-            logging.info(req.status_code)
             self.server_available = False
             raise ServerUnaccessible("Server is not available")
         
         req = await req.json()
+        logging.info(await req.json())
         if req["message"] != "OK":
             return {"error": req["message"]}
         lessons = {}
@@ -111,10 +111,12 @@ class Learner:
                     Score(lesson["lessonScores"][0] if lesson["lessonScores"] else {}),
                     )
                 lessons[lsn.date.strftime("%Y-%m-%d")] = lessons.get(lsn.date.strftime("%Y-%m-%d"), []) + [lsn]
+
         return lessons
 
     @server_is_available
     async def get_period(self, person_id: int, date_start: dt.date = dt.date.today() - dt.timedelta(days=31), date_end: dt.date = dt.date.today()):
+        person_id = 254586
         params = {
             "childId": person_id,
             "dateStart": dt.datetime.strftime(date_start, "%Y-%m-%d"),
@@ -124,10 +126,10 @@ class Learner:
         resp = await self.session.get("https://school.edu-penza.ru/android/scores/period", params=params, allow_redirects=False)
 
         if resp.status > 300:
-            logging.info(resp.status_code)
             self.server_available = False
             raise ServerUnaccessible("Server is not available")
         resp = await resp.json()
+        logging.info(await resp.json())
         if resp["message"] != "OK":
             return {"error": resp["message"]}
         return resp["returnedObject"]
