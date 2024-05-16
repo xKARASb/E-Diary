@@ -66,7 +66,6 @@ class Learner:
     
     @server_is_available
     async def get_week(self, person_id: int, date_start=dt.date.today(), date_end=dt.date.today(), sort_by = "subject") -> dict[str, list[Lesson]]:
-        person_id = 254586
         params = {
             "childId": person_id,
             "dateStart": dt.datetime.strftime(date_start, "%Y-%m-%d"),
@@ -116,7 +115,6 @@ class Learner:
 
     @server_is_available
     async def get_period(self, person_id: int, date_start: dt.date = dt.date.today() - dt.timedelta(days=31), date_end: dt.date = dt.date.today()):
-        person_id = 254586
         params = {
             "childId": person_id,
             "dateStart": dt.datetime.strftime(date_start, "%Y-%m-%d"),
