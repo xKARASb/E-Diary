@@ -55,7 +55,7 @@ def MarksPeriodChoice(menu = "marks.default"):
     ]
     return NavigationKeyboard(buttons, "marks")
 
-def MarksAvgChoice(menu = "marks.avg.period"):
+def MarksAvgChoice(menu = "marks.avg.period", periods = []):
     buttons = [
         [
             InlineKeyboardButton(text="I", callback_data=NavigationCallback(menu=menu, params="quoter.first").pack()),
@@ -68,6 +68,23 @@ def MarksAvgChoice(menu = "marks.avg.period"):
             InlineKeyboardButton(text="II полугодие", callback_data=NavigationCallback(menu=menu, params="half.second").pack()),
         ],
     ]
+    return NavigationKeyboard(buttons, "marks")
+
+def MarksFinalChoice(menu = "marks.final.period", periods = []):
+    buttons = [
+        [
+            InlineKeyboardButton(text=periods[i], callback_data=NavigationCallback(menu=menu, params=i+1).pack()),
+            InlineKeyboardButton(text=periods[i+1], callback_data=NavigationCallback(menu=menu, params=i+2).pack())
+        ]        
+        for i in range(0, len(periods)-1, 2)
+    ]
+    
+    if len(periods) % 2 == 1:
+        buttons.append(
+            [
+                InlineKeyboardButton(text=periods[-1], callback_data=NavigationCallback(menu=menu, params=-1).pack()),
+            ]
+        )
     return NavigationKeyboard(buttons, "marks")
 
 def MarksDefaulChoiceLessons(lessons):

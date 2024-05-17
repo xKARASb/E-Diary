@@ -79,7 +79,6 @@ class Learner:
             raise ServerUnaccessible("Server is not available")
         
         req = await req.json()
-        logging.info(req)
         if req["message"] != "OK":
             return {"error": req["message"]}
         lessons = {}
@@ -131,7 +130,26 @@ class Learner:
         if resp["message"] != "OK":
             return {"error": resp["message"]}
         return resp["returnedObject"]
-    
+ 
+    @server_is_available
+    async def get_final(self, person_id: int) -> list[str]:
+        params = {
+            "childId": person_id
+        }
+        
+        resp = await self.session.get("https://school.edu-penza.ru/android/scores/result", params=params, allow_redirects=False)
+
+        if resp.status > 300:
+            self.server_available = False
+            raise ServerUnaccessible("Server is not available")
+        
+        resp = await resp.json()
+        
+        if resp["message"] != "OK":
+            return {"error": resp["message"]}
+        
+        return resp["returnedObject"]
+   
     async def __get_periods_dates(self):
         # resp = await (await self.session.get("https://school.edu-penza.ru/android/childs")).json()
 

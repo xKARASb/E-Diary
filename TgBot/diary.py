@@ -33,13 +33,20 @@ async def main(query: CallbackQuery, state: FSMContext):
         users_calendar.pop(query.from_user.id)
     if user_cache.get(query.from_user.id):
         user_cache.pop(query.from_user.id)
-
-# @diary_router.callback_query(NavigationCallback.filter(F.menu == "timetable"))
-# async def timetable(query: CallbackQuery):
-#     await query.answer(in_progres_text)
+    
+    if final_cache.get(query.from_user.id):
+        final_cache.pop(query.from_user.id)
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks"))
 async def marks(query: CallbackQuery):
+    if client_cache.get(query.from_user.id):
+        client_cache.pop(query.from_user.id)
+    if users_calendar.get(query.from_user.id):
+        users_calendar.pop(query.from_user.id)
+    if user_cache.get(query.from_user.id):
+        user_cache.pop(query.from_user.id)
+    if final_cache.get(query.from_user.id):
+        final_cache.pop(query.from_user.id)
     await query.message.edit_text(marks_main_text, reply_markup=MarksKeyboard())
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.week"))
@@ -232,64 +239,39 @@ async def marks_choice_second_date(query: CallbackQuery, callback_data: Callback
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.final"))
 async def marks_final(query: CallbackQuery, state: FSMContext):
     await state.update_data({"back_ref": "marks.final"})
-    await query.message.edit_text(marks_avg_text, reply_markup=MarksAvgChoice(menu="marks.final.period"))
+    
+    if not (marks:= final_cache.get(query.from_user.id)):
+        marks = await learner_client.get_final(
+            (await Account(query.from_user.id).get_account()).person.id
+        )
+
+    final_cache[query.from_user.id] = marks
+    await query.message.edit_text(marks_avg_text, reply_markup=MarksFinalChoice(periods=marks[0][1:]))
 
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.final.period"))
 async def marks_final_period(query: CallbackQuery, state: FSMContext):
-    period = NavigationCallback.unpack(query.data).params
-    period_text = None
-    match period:
-        case "quoter.first":
-            date_start = learner_client.periods[0]["dateFrom"]
-            date_end = learner_client.periods[0]["dateTo"]
-            period_text = "I четверть"
-        case "quoter.second":
-            date_start = learner_client.periods[1]["dateFrom"]
-            date_end = learner_client.periods[1]["dateTo"]
-            period_text = "II четверть"
-        case "quoter.third":
-            date_start = learner_client.periods[2]["dateFrom"]
-            date_end = learner_client.periods[2]["dateTo"]
-            period_text = "III четверть"
-        case "quoter.fourth":
-            date_start = learner_client.periods[3]["dateFrom"]
-            date_end = learner_client.periods[3]["dateTo"]
-            period_text = "IV четверть"
-        case "half.first":
-            date_start = learner_client.periods[0]["dateFrom"]
-            date_end = learner_client.periods[1]["dateTo"]
-            period_text = "I полугодие"
-        case "half.second":
-            date_start = learner_client.periods[2]["dateFrom"]
-            date_end = learner_client.periods[3]["dateTo"]
-            period_text = "II полугодие"
-        case _:
-            date_start, date_end = period.split(".")
-            period_text = f"*с *{validate_text(date_start)}* по *{validate_text(date_end)}*\r*"
-    date_start, date_end = dt.datetime.strptime(date_start, "%Y-%m-%d"), dt.datetime.strptime(date_end, "%Y-%m-%d")
-    marks = await learner_client.get_period(
-        (await Account(query.from_user.id).get_account()).person.id,
-        date_start,
-        date_end
-        )
-    
+    period = int(NavigationCallback.unpack(query.data).params)
+
+    marks = final_cache[query.from_user.id]
+    period_text = marks[0][period]
     marks_text = f"Итоговые *{period_text}*:\n"
 
-    for lesson in marks:
-        if len(lesson) == 3 or lesson[-1].split("#")[0] == "":
+    for subject in marks[1:]:
+        if subject[period] == "-":
             continue
-        if len(lesson[0]) > 23:
-            if lesson[0].split(".")[0] == "Иностранный язык":
-                lesson[0] = lesson[0].replace("Иностранный язык. ", "")
-            elif lesson[0].split()[0] == "Основы":
-                lesson[0] = lesson[0].replace("Основы безопасности жизнедеятельности", "ОБЖ")
+        if len(subject[0]) > 23:
+            if subject[0].split(".")[0] == "Иностранный язык":
+                subject[0] = subject[0].replace("Иностранный язык. ", "")
+            elif subject[0].split()[0] == "Основы":
+                subject[0] = subject[0].replace("Основы безопасности жизнедеятельности", "ОБЖ")
             else:
-                lesson[0] = lesson[0][:20] + "..."
+                subject[0] = subject[0][:20] + "..."
 
-        marks_text += f"*•* `{validate_text(lesson[0])}:{' ' * (35 - 10 - len(lesson[0]))}`*{lesson[-1].split('#')[0]}*\n"
+        marks_text += f"*•* `{validate_text(subject[0])}:{' ' * (35 - 10 - len(subject[0]))}`*{subject[period]}*\n"
+        
     if marks_text == f"Итоговые *{period_text}*:\n":
         marks_text = no_final_marks
-    back_ref = (await state.get_data())["back_ref"]
+    back_ref = "marks.final"
     await query.message.edit_text(text=marks_text, parse_mode="Markdownv2", reply_markup=NavigationKeyboard([], back_ref))
     
 @diary_router.callback_query(NavigationCallback.filter(F.menu == "marks.avg"))
