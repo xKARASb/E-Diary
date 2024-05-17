@@ -25,6 +25,10 @@ async def handle_serverunaccesible_exception(event):
     await event.update.callback_query.message.edit_text("Сервер электронного дневника временно не доступен 🥲\nРазработчик уже разбирается в проблеме!", reply_markup=ToMainMenuKeyboard())
     await bot.send_message(1810265462, "Сервер электронного дневника не доступен!!!")
 
+@dp.error(ExceptionTypeFilter(KeyError))
+async def handle_keyerror_exception(event):
+    await event.update.callback_query.message.edit_text("Кажется нет нужных данных, попробуйте заново!", reply_markup=ToMainMenuKeyboard())
+
 async def start_bot():
     await dp.start_polling(bot, handle_signals=True)
 
