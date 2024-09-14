@@ -128,6 +128,9 @@ class Learner:
         sleep(5)
         req = requests.post("https://esia.gosuslugi.ru/aas/oauth2/api/login", headers=headers, json=data, cookies=req.cookies)
         
+        logging.info(req.status_code)
+        if login_data.get("failed"):
+            logging.error(login_data)
         cookies = {}
         cookies = req.cookies.get_dict()
                 
