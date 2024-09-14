@@ -4,5 +4,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-JSESSIONID = getenv('JSESSIONID')
-learner_client = Learner(JSESSIONID)
+ESIA_PASSWORD = getenv('ESIA-PASSWORD')
+ESIA_LOGIN= getenv('ESIA-LOGIN')
+ESIA_TOTP = getenv('ESIA-TOTP-KEY')
+BOT_TOKEN = getenv('BOT-TOKEN')
+USER_ID = getenv('USER-ID')
+learner_client = Learner(
+    bot_token=BOT_TOKEN,
+    notification_user_id=USER_ID,
+    esia_login=ESIA_LOGIN,
+    esia_password=ESIA_PASSWORD,
+    esia_totp_key=ESIA_TOTP
+    )

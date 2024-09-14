@@ -2,7 +2,7 @@ from os import getenv
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters.exception import ExceptionTypeFilter
-from ITschool.exceptions import ServerUnaccessible
+from ITschool.exceptions import ServerUnaccessible, UnrecognizedError
 
 from .auth import auth_router
 from .diary import diary_router
@@ -22,8 +22,13 @@ dp.include_router(timetable_router)
 
 @dp.error(ExceptionTypeFilter(ServerUnaccessible))
 async def handle_serverunaccesible_exception(event):
-    await event.update.callback_query.message.edit_text("Сервер электронного дневника временно не доступен 🥲\nРазработчик уже разбирается в проблеме!", reply_markup=ToMainMenuKeyboard())
-    await bot.send_message(1810265462, "Сервер электронного дневника не доступен!!!")
+    await event.update.callback_query.message.edit_text("Сервер электронного дневника временно не доступен 🥲", reply_markup=ToMainMenuKeyboard())
+    # await bot.send_message(1810265462, "Сервер электронного дневника не доступен!!!")
+
+@dp.error(ExceptionTypeFilter(UnrecognizedError))
+async def handle_serverunaccesible_exception(event):
+    await event.update.callback_query.message.edit_text("Неизвестная ошибка, попробуйте ещё раз", reply_markup=ToMainMenuKeyboard())
+    # await bot.send_message(1810265462, "Неизвестная ошибка")
 
 @dp.error(ExceptionTypeFilter(KeyError))
 async def handle_keyerror_exception(event):

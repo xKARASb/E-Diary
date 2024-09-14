@@ -11,3 +11,4 @@ notification.py
 init_db.py
 learners_parser/
 old_models/
+learner_old.py
